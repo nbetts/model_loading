@@ -4,7 +4,7 @@ program=${filepath##src/}
 output=${program%.*}
 
 thirdPartyDir="src/third_party"
-thirdPartyFilePath=$thirdPartyFilePath"/stb_image.h"
+thirdPartyFilePath=$thirdPartyDir"/stb_image.h"
 
 compile() {
   # Check if stb_image.h is included, if not then include it.
