@@ -3,11 +3,16 @@ filepath=src/main.cpp
 program=${filepath##src/}
 output=${program%.*}
 
-thirdPartyFilePath=src/third_party/stb_image.h
+thirdPartyDir="src/third_party"
+thirdPartyFilePath=$thirdPartyFilePath"/stb_image.h"
 
 compile() {
   # Check if stb_image.h is included, if not then include it.
   if [ ! -f $thirdPartyFilePath ] || [ "$updateThirdParty" = true ]; then
+    if [ ! -d $thirdPartyDir ]; then
+      mkdir $thirdPartyDir
+    fi
+
     wget -qO $thirdPartyFilePath https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
   fi
 
