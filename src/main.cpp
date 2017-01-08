@@ -35,11 +35,14 @@ GLuint isCullingEnabled;
 GLuint areFacesEnabled;
 GLuint areNormalsEnabled;
 GLuint isWireframeEnabled;
+GLuint isOutlineEnabled;
 glm::vec4 wireframeColour;
+glm::vec4 outlineColour;
 GLfloat shineValue = 1.0f;
 GLfloat normalLength;
+GLfloat outlineSize;
 
-Shader simpleShader, normalShader;
+Shader simpleShader, normalShader, outlineShader;
 Model featureModel, lightModel;
 std::string featureModelPath, lightModelPath;
 
@@ -78,6 +81,10 @@ GLvoid keyboard(GLFWwindow* window, GLint key, GLint scancode,
     case GLFW_KEY_X:
       isWireframeEnabled = !isWireframeEnabled;
       env["isWireframeEnabled"] = isWireframeEnabled;
+      break;
+    case GLFW_KEY_V:
+      isOutlineEnabled = !isOutlineEnabled;
+      env["isOutlineEnabled"] = isOutlineEnabled;
       break;
     case GLFW_KEY_P:
       isPointLightingEnabled = !isPointLightingEnabled;
@@ -134,12 +141,19 @@ GLvoid initialiseEnvironment()
   areFacesEnabled = env["areFacesEnabled"];
   areNormalsEnabled = env["areNormalsEnabled"];
   isWireframeEnabled = env["isWireframeEnabled"];
+  isOutlineEnabled = env["isOutlineEnabled"];
   isCullingEnabled = env["isCullingEnabled"];
   normalLength = env["normalLength"];
-  wireframeColour.r = env["wireframeColourRed"];
-  wireframeColour.g = env["wireframeColourGreen"];
-  wireframeColour.b = env["wireframeColourBlue"];
-  wireframeColour.a = env["wireframeColourAlpha"];
+  outlineSize = env["outlineSize"] / 100.0f;
+
+  wireframeColour = glm::vec4(env["wireframeColourRed"],
+                             env["wireframeColourGreen"],
+                             env["wireframeColourBlue"],
+                             env["wireframeColourAlpha"]);
+  outlineColour = glm::vec4(env["outlineColourRed"],
+                            env["outlineColourGreen"],
+                            env["outlineColourBlue"],
+                            env["outlineColourAlpha"]);
 }
 
 /**
@@ -153,7 +167,7 @@ GLvoid initialiseCamera()
                   env["cameraMovementSpeed"],
                   env["cameraTurnSensitivity"],
                   env["cameraFov"],
-                  aspectRatio, 0.01f, 10.0f, 40.0f);
+                  aspectRatio, 0.01f, 100.0f, 40.0f);
 }
 
 /**
@@ -164,17 +178,23 @@ GLvoid initialiseModel()
   simpleShader = Shader("src/shaders/model.vert",
                         "src/shaders/model.frag",
                         "src/shaders/model.geom");
-  normalShader = Shader("src/shaders/model.vert",
+  normalShader = Shader("src/shaders/normal.vert",
                         "src/shaders/normal.frag",
                         "src/shaders/normal.geom");
+  outlineShader = Shader("src/shaders/outline.vert",
+                         "src/shaders/outline.frag",
+                         "src/shaders/outline.geom");
   simpleShader.load();
   normalShader.load();
+  outlineShader.load();
 
   featureModel = Model(featureModelPath);
   lightModel = Model(lightModelPath);
 
   featureModel.load();
   lightModel.load();
+
+  featureModel.normalize(-1.0f, 1.0f);
 }
 
 /**
@@ -203,11 +223,10 @@ GLvoid drawModel()
   using namespace glm;
 
   mat4 model;
-  model = scale(model, vec3(0.1f));
 
   GLuint modelLoc, viewLoc, projectionLoc, viewPosLoc;
   GLuint facesLoc, wireframeLoc, wireframeColourLoc, normalLengthLoc;
-  GLuint matShineLoc;
+  GLuint matShineLoc, outlineSizeLoc, outlineColourLoc;
   GLuint lightPositionLoc, lightAmbientLoc, lightDiffuseLoc, lightSpecularLoc;
 
   // Draw the feature model.
@@ -252,6 +271,11 @@ GLvoid drawModel()
   glUniform4f(wireframeColourLoc, wireframeColour.r, wireframeColour.g,
                                   wireframeColour.b, wireframeColour.a);
   
+  if (isOutlineEnabled) {
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
+  }
+  
   featureModel.draw(simpleShader, isCullingEnabled);
 
   if (areNormalsEnabled) {
@@ -269,6 +293,33 @@ GLvoid drawModel()
     glUniform1f(normalLengthLoc, normalLength);
     
     featureModel.draw(normalShader, isCullingEnabled);
+  }
+
+  if (isOutlineEnabled) {
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilMask(0x00);
+    glDisable(GL_DEPTH_TEST);
+    outlineShader.use();
+
+    modelLoc      = glGetUniformLocation(outlineShader.id, "model");
+    viewLoc       = glGetUniformLocation(outlineShader.id, "view");
+    projectionLoc = glGetUniformLocation(outlineShader.id, "projection");
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(camera.view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,value_ptr(camera.projection));
+
+    outlineSizeLoc = glGetUniformLocation(outlineShader.id, "outlineSize");
+    glUniform1f(outlineSizeLoc, outlineSize);
+
+    outlineColourLoc = glGetUniformLocation(outlineShader.id, "outlineColour");
+    glUniform4f(outlineColourLoc, outlineColour.r, outlineColour.g,
+                                  outlineColour.b, outlineColour.a);
+    
+    featureModel.draw(outlineShader, isCullingEnabled);
+
+    glStencilMask(0xFF);
+    glEnable(GL_DEPTH_TEST);
   }
 
   // Draw the light model.
@@ -326,7 +377,7 @@ GLvoid runMainLoop()
     // Clear the screen.
     glClearColor(backgroundColour.r, backgroundColour.g,
                  backgroundColour.b, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     // Draw functions.
     drawModel();
@@ -385,6 +436,10 @@ GLvoid initialiseGraphics(GLint argc, GLchar* argv[])
   // Set extra options.
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glEnable(GL_DEPTH_TEST);
+
+  glEnable(GL_STENCIL_TEST);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+  
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
@@ -397,6 +452,7 @@ GLvoid terminateGraphics()
 {
   simpleShader.unload();
   normalShader.unload();
+  outlineShader.unload();
 
   featureModel.unload();
   lightModel.unload();

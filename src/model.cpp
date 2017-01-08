@@ -13,6 +13,9 @@ Model::Model(std::string modelFilepath)
     filepath = modelFilepath;
     directory = filepath.substr(0, filepath.find_last_of('/'));
   }
+
+  minX = minY = minZ = maxX = maxY = maxZ = 0.0f;
+  centerPosition = glm::vec3(0.0f);
 }
 
 GLvoid Model::load()
@@ -30,6 +33,7 @@ GLvoid Model::load()
   }
 
   processNode(scene->mRootNode, scene);
+  calculateBoundingBox();
 }
 
 /**
@@ -59,6 +63,62 @@ GLvoid Model::draw(Shader shader, GLuint isCullingEnabled)
   if (isCullingEnabled) {
     glDisable(GL_CULL_FACE);
   }
+}
+
+/**
+ * Normalize the model's vertex positions in between min and max.
+ */
+GLvoid Model::normalize(GLfloat min, GLfloat max)
+{
+  GLfloat x, y, z;
+  GLfloat scaleFactor;
+
+  GLfloat size = max - min;
+  GLfloat magX = fabsf(maxX - minX);
+  GLfloat magY = fabsf(maxY - minY);
+  GLfloat magZ = fabsf(maxZ - minZ);
+
+  GLuint largestDimension = magY > magX ? magZ > magY ? Z : Y : X;
+
+  switch (largestDimension) {
+    case X: scaleFactor = 1.0f / magX; break;
+    case Y: scaleFactor = 1.0f / magY; break;
+    case Z: scaleFactor = 1.0f / magZ; break;
+  }
+
+  for (GLuint i = 0; i < meshes.size(); i++) {
+    for (GLuint j = 0; j < meshes[i].vertices.size(); j++) {
+      x = meshes[i].vertices[j].position.x;
+      y = meshes[i].vertices[j].position.y;
+      z = meshes[i].vertices[j].position.z;
+
+      switch (largestDimension) {
+        case X:
+          x = size * (x - minX) / (maxX - minX) + min;
+          y = size * (y * scaleFactor);
+          z = size * (z * scaleFactor);
+          break;
+        case Y:
+          x = size * (x * scaleFactor);
+          y = size * (y - minY) / (maxY - minY) + min;
+          z = size * (z * scaleFactor);
+          break;
+        case Z:
+          x = size * (x * scaleFactor);
+          y = size * (y * scaleFactor);
+          z = size * (z - minZ) / (maxZ - minZ) + min;
+          break;
+      }
+
+      meshes[i].vertices[j].position.x = x;
+      meshes[i].vertices[j].position.y = y;
+      meshes[i].vertices[j].position.z = z;
+    }
+
+    meshes[i].reload();
+  }
+
+  calculateBoundingBox();
 }
 
 GLvoid Model::processNode(aiNode* node, const aiScene* scene)
@@ -197,4 +257,51 @@ GLuint Model::loadTexture(const GLchar* filepath, std::string directory)
   glBindTexture(GL_TEXTURE_2D, 0);
 
   return textureID;
+}
+
+GLvoid Model::calculateBoundingBox()
+{
+  GLfloat maxFloatValue = std::numeric_limits<float>::max();
+  glm::vec3 vector;
+
+  minX = minY = minZ = maxFloatValue;
+  maxX = maxY = maxZ = -maxFloatValue;
+
+  for (GLuint i = 0; i < meshes.size(); i++) {
+    for (GLuint j = 0; j < meshes[i].vertices.size(); j++) {
+      vector = meshes[i].vertices[j].position;
+
+      if (vector.x < minX) {
+        minX = vector.x;
+      } else if (vector.x > maxX) {
+        maxX = vector.x;
+      }
+
+      if (vector.y < minY) {
+        minY = vector.y;
+      } else if (vector.y > maxY) {
+        maxY = vector.y;
+      }
+
+      if (vector.z < minZ) {
+        minZ = vector.z;
+      } else if (vector.z > maxZ) {
+        maxZ = vector.z;
+      }
+    }
+  }
+
+  centerPosition = glm::vec3(average({minX, maxX}),
+                             average({minY, maxY}),
+                             average({minZ, maxZ}));
+}
+
+GLvoid Model::printBoundingBox()
+{
+  printf("Bounding box for %s\n", filepath.c_str());
+  printf("min = (%.3f, %.3f, %.3f)\n", minX, minY, minZ);
+  printf("max = (%.3f, %.3f, %.3f)\n", maxX, maxY, maxZ);
+  printf("center = (%.3f, %.3f, %.3f)\n", centerPosition.x,
+                                          centerPosition.y,
+                                          centerPosition.z);
 }

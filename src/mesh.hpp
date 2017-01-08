@@ -33,6 +33,7 @@ class Mesh
          std::vector<Texture> meshTextures);
     GLvoid load();
     GLvoid unload();
+    GLvoid reload();
     GLvoid draw(Shader shader);
 
   private:

@@ -61,6 +61,12 @@ GLvoid Mesh::unload()
   glDeleteBuffers(1, &ebo);
 }
 
+GLvoid Mesh::reload()
+{
+  unload();
+  load();
+}
+
 GLvoid Mesh::draw(Shader shader)
 {
   GLuint diffuseNo = 0, specularNo = 0;

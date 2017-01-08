@@ -7,7 +7,6 @@ in Data {
   vec4 position;
   vec3 normal;
   vec2 textureCoords;
-  vec4 vNormal;
 } vertices[];
 
 out Data {

@@ -91,6 +91,6 @@ void main()
                         interpolatedColour), alpha);
     }
   } else {
-    // colour = baseColour;
+    colour = baseColour;
   }
 }
