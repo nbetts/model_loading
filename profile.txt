@@ -1,0 +1,34 @@
+# This file contains configuration variables used in the simulation. Format:
+# [source name]            [value] [description]
+
+# System properties
+isFullScreenEnabled         0      # initial toggle of fullscreen window
+
+
+# Environment properties
+isPointLightingEnabled      1      # initial toggle of point/direction lighting
+
+lightPositionX              0.0    # x position of light source
+lightPositionY              2.0    # y position of light source
+lightPositionZ              0.0    # z position of light source
+backgroundColourRed         0.5    # brightness of red colour (0 - 1.0)
+backgroundColourGreen       0.5    # brightness of green colour (0 - 1.0)
+backgroundColourBlue        0.5    # brightness of blue colour (0 - 1.0)
+
+
+# Scene properties
+areFacesEnabled             1      # initial toggle of fractal facets
+areNormalsEnabled           0      # initial toggle of vertex normals
+isWireframeEnabled          0      # initial toggle of fractal wireframe
+isCullingEnabled            0      # initial toggle of vertex culling
+normalLength                0.02   # length of the visualised normal lines
+
+wireframeColourRed          0.8    # brightness of wireframce red colour
+wireframeColourGreen        0.8    # brightness of wireframce green colour
+wireframeColourBlue         0.0    # brightness of wireframce blue colour
+wireframeColourAlpha        1.0    # alpha value of wireframce colour
+
+# Camera properties
+cameraMovementSpeed         1.0    # movement speed of freemode camera
+cameraTurnSensitivity       0.2    # mouse movement/scroll sensitivity
+cameraFov                   45     # field of view
